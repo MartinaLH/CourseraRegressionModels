@@ -1,0 +1,222 @@
+---
+title: "Relation between transmission type and miles per gallon"
+author: "Martina Hoever"
+date: "May 22nd - 2016"
+output: pdf_document
+---
+
+## Data analysis on miles per gallon for automatic versus manual transmission
+
+### Executive summary
+This report focuses on answering the following two questions:
+
+* Is an automatic or manual transmission better for MPG?
+* Quantify the MPG difference between automatic and manual transmissions?
+
+The data analysis shows that automatic transmission is better for MPG than manual transmission.
+Taking weight and number of cylinders into account, having manual transmission will cause an increase in miles per gallon of 0.17 over having automatic transmission.
+
+### 1. Overview and exploratory data analysis
+
+*Note: To keep this report concise all code used in this report is hidden but can be found __[here](https://github.com/MartinaLH/CourseraRegressionModels)__ in the .rmd file on GitHub *
+
+
+This report focuses on a data analysis of difference in the miles per gallon for cars with automatic versus manual transmission. For this analysis the Motor Trend Car Road Tests dataset is used. This data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+A data frame with 32 observations on 11 variables. We are mostly interested in the variables 'mpg' and 'am', describing respectively the miles per (US) gallon and the transmission, with 0 being automatic and 1 being manual.
+
+#### 1.1 Load and summarize the data
+The dataset mtcars will be loaded and summarized. 
+Since we will be using the variable transmission as a factor, we wil adjust this in the dataframe.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Load the data mtars data
+data(mtcars)
+head(mtcars)
+summary(mtcars$mpg)
+
+## Add variable am as a factor
+mtcars$am <- factor(mtcars$am)
+
+```
+
+#### 1.2 View the data
+To get some insight in the distribution of the two variables that we are mostely interested in, we will plot these two variables in a violin plot.
+
+*Note: The violin plot can be found in the appendix*
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Plot the data in a violin pplot
+library(stats)
+library(ggplot2) 
+p1 <- ggplot(mtcars, aes(y=mpg, x=factor(am, labels = c("Automatic", "Manual")), fill=am))
+p1 <- p1 + geom_violin(colour="black", size=1)
+p1 <- p1 + scale_fill_manual(values=c("deepskyblue4", "deepskyblue3"))
+p1 <- p1 + ggtitle("Violin plot of MPG by transmission type")
+p1 <- p1 + xlab("Transmission") 
+p1 <- p1 + ylab("MPG")
+p1 <- p1 + theme(legend.position="none")
+```
+This plot shows us that manual transmission seems to have a higher MPG than automatic tranmission.
+We will check this by calculating the mean for both transmission types. This results in a mean of 17.14 MPG for automatic transmission and 24.39 MPG for manual transmission.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Plot the data in a violin pplot
+mpg_auto <- mtcars[mtcars$am == 0, ]$mpg
+mpg_manual <- mtcars[mtcars$am == 1, ]$mpg
+c(mean(mpg_auto),mean(mpg_manual))
+```
+To be able to answer the question "Is an automatic or manual transmission better for MPG" a t-test can be done to show if the difference shown in the previous plot is significant.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Perform T-Test
+t.test(mpg_auto, mpg_manual) 
+```
+
+This shows that the true difference in means is not equal to 0, with a p value of 0.001374.
+Since we know that manual transmission has a higher mean than automatic, we now can conclude that manual is better for MPG than automatic.
+
+### 2 Regression Analysis
+
+We would like to see if we can create a better prediction model by concidering more variables than only transmission and mpg. Therefor we will create a multivariable regression model.
+
+#### 2.1 Multivariable regression model
+We will start by creating a multivariable regression model with all the variables.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Create linear regressiom model
+fit1 <- lm(mpg ~ ., data=mtcars)
+summary(fit1)$coef
+```
+
+By having all variables in the model, we see that not one of the variables has a p-value lower than 0.05. This implies that none of the variables show a significant result. To be able to create a better prediction model, we will have to remove some of the variables.
+
+
+#### 2.2 Evaluate correlation
+To determine which variables should go into our model, we create a correlation matrix.
+
+*Note: The correlation graph can be found in the appendix*
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Create a correlation graph
+if(!require(GGally)){
+    install.packages("GGally")
+    library(GGally)
+}
+
+p2 <- ggpairs(mtcars, 
+        upper = list(continuous = wrap(ggally_cor, size = 2)), 
+        lower = list(continuous = 'smooth', size=2)) 
+
+```
+
+Looking at the correlation with mpg, we see that cyl, disp, hp, drat, wt, vs and am have the largest correlation.
+
+#### 2.1 Analysis of the variance
+We will use analysis of the variance (ANOVA) to quantify the significance of adding additional regressors.
+After am, we will add the variables in order of their correlation with mpg. This results in 7 models each including one more attribute in the following order: am, wt, cyl, disp, hp, drat, vs.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+fit1 <- lm(mpg ~ am, data = mtcars)
+fit2 <- lm(mpg ~ am+wt, data = mtcars)
+fit3 <- lm(mpg ~ am+wt+cyl, data = mtcars)
+fit4 <- lm(mpg ~ am+wt+cyl+disp, data = mtcars)
+fit5 <- lm(mpg ~ am+wt+cyl+disp+hp, data = mtcars)
+fit6 <- lm(mpg ~ am+wt+cyl+disp+hp+drat, data = mtcars)
+fit7 <- lm(mpg ~ am+wt+cyl+disp+hp+drat+vs, data = mtcars)
+anova(fit1, fit2, fit3, fit4, fit5, fit6, fit7)
+
+```
+
+From the result of this analysis we can see that from model 4 on the p-value becomes larger than 0.05.
+We will therefor choose the model with variables am, wt and cyl. 
+
+#### 2.2.2 Evaluate coefficients
+Firstly we will asses at this model by looking at the coefficients.
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## View a summary of the coefficients 
+summary(fit3)$coef
+```
+
+
+```{r kable,  echo=FALSE, warning=F, message=F, cache = TRUE}
+library( knitr)
+kable(summary(fit3)$coef, digits=2)
+```
+
+We now see that all the variables are significant, since their p-values are below 0.05.
+For the variable transmission this model implies that a manual transmission will cause an increase in miles per gallon of 0.17. 
+
+
+##### 2.2.1 Evaluate residuals
+Analysis of the veriance is sensitive to its assumption that model residuals are approximately normal. We will first take a look at these residuals in a plot, and then test if the residuals from are model are approximately normal by performing a Shapiro-Wilk test. 
+
+*Note: The residuals plot can be found in the appendix*
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Plot the residuals
+p3 <- ggplot(fit3, aes(.fitted, .resid))+geom_point()
+p3 <- p3 + stat_smooth(method="loess")
+p3 <- p3 + geom_hline(yintercept=0, col="deepskyblue3", linetype="dashed")
+p3 <- p3 + xlab("Fitted values")+ylab("Residuals")
+p3 <- p3 + ggtitle("Residual values vs Fitted values")+theme_bw()
+
+
+shapiro.test(fit3$residuals)
+
+```
+
+
+```{r, eval=TRUE, results="hide", echo=FALSE, warning=F, message=F, cache = TRUE}
+## Test normality of the residuals
+shapiro.test(fit3$residuals)
+
+```
+The plot shows that the residuals do not seem to follow a specific pattern. The Shapiro test P-value of 0.060108 is less than 0.1, which confirms the normality of the residuals.  
+
+\pagebreak
+
+### 3. Appendix
+
+### 3.1 Violin plot of the variables transmission and mpg
+```{r, eval=TRUE, echo=F, warning=F, message=F, cache = TRUE}
+## Plot the data in a violin pplot
+library(stats)
+library(ggplot2) 
+p1 <- ggplot(mtcars, aes(y=mpg, x=factor(am, labels = c("Automatic", "Manual")), fill=am))
+p1 <- p1 + geom_violin(colour="black", size=1)
+p1 <- p1 + scale_fill_manual(values=c("deepskyblue4", "deepskyblue3"))
+p1 <- p1 + ggtitle("Violin plot of MPG by transmission type")
+p1 <- p1 + xlab("Transmission") 
+p1 <- p1 + ylab("MPG")
+p1 <- p1 + theme(legend.position="none")
+p1
+```
+
+\pagebreak
+
+#### 3.2 Correlation graph
+```{r,eval=T, echo=F, warning=F, message=F, cache = TRUE}
+## Create a correlation graph
+if(!require(GGally)){
+    install.packages("GGally")
+    library(GGally)
+}
+data(mtcars)
+p2 <- ggpairs(mtcars, 
+        upper = list(continuous = wrap(ggally_cor, size = 2)), 
+        lower = list(continuous = 'smooth', size=2)) 
+p2
+```
+
+\pagebreak
+
+#### 3.3 Plot of residuals
+```{r,eval=T, echo=F, warning=F, message=F, cache = TRUE}
+## Plot the residuals
+p3 <- ggplot(fit3, aes(.fitted, .resid))+geom_point()
+p3 <- p3 + stat_smooth(method="loess")
+p3 <- p3 + geom_hline(yintercept=0, col="deepskyblue3", linetype="dashed")
+p3 <- p3 + xlab("Fitted values")+ylab("Residuals")
+p3 <- p3 + ggtitle("Residual values vs Fitted values")+theme_bw()
+p3
+
+```
